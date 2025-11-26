@@ -298,8 +298,13 @@ void Emulator::Run(std::filesystem::path file, std::vector<std::string> args,
                                        Common::g_scm_branch, Common::g_scm_desc, game_title);
         }
     }
-    window = std::make_unique<Frontend::WindowSDL>(
-        Config::getWindowWidth(), Config::getWindowHeight(), controller, window_title);
+    if (Config::fastReadbacks) {
+        window = std::make_unique<Frontend::WindowSDL>(
+            Config::getWindowWidth(), Config::getWindowHeight(), controller, title);
+    } else {
+        window = std::make_unique<Frontend::WindowSDL>(
+            Config::getWindowWidth(), Config::getWindowHeight(), controller, window_title);
+    }
 
     g_window = window.get();
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <boost/container/small_vector.hpp>
+#include "common/config.h"
 #include "common/assert.h"
 #include "common/debug.h"
 #include "common/div_ceil.h"
@@ -45,10 +46,16 @@ struct PageManager::Impl {
         // At the moment only buffer cache can request read watchers.
         // And buffers cannot overlap, thus only 1 can exist per page.
         u8 num_read_watchers : 1;
+        u8 num_fast_watchers : 8;
 
         Core::MemoryPermission WritePerm() const noexcept {
-            return num_write_watchers == 0 ? Core::MemoryPermission::Write
-                                           : Core::MemoryPermission::None;
+            if (Config::fastReadbacks()) {
+                return num_fast_watchers == 0 ? Core::MemoryPermission::Write
+                                              : Core::MemoryPermission::Read;
+            } else {
+                return num_write_watchers == 0 ? Core::MemoryPermission::Write
+                                               : Core::MemoryPermission::None;
+            }
         }
 
         Core::MemoryPermission ReadPerm() const noexcept {
@@ -62,23 +69,34 @@ struct PageManager::Impl {
 
         template <s32 delta, bool is_read>
         u8 AddDelta() {
-            if constexpr (is_read) {
+            if (Config::fastReadbacks()) {
                 if constexpr (delta == 1) {
-                    return ++num_read_watchers;
+                    return ++num_fast_watchers;
                 } else if (delta == -1) {
-                    ASSERT_MSG(num_read_watchers > 0, "Not enough watchers");
-                    return --num_read_watchers;
+                    ASSERT_MSG(num_fast_watchers > 0, "Not enough watchers");
+                    return --num_fast_watchers;
                 } else {
-                    return num_read_watchers;
+                    return num_fast_watchers;
                 }
             } else {
-                if constexpr (delta == 1) {
-                    return ++num_write_watchers;
-                } else if (delta == -1) {
-                    ASSERT_MSG(num_write_watchers > 0, "Not enough watchers");
-                    return --num_write_watchers;
+                if constexpr (is_read) {
+                    if constexpr (delta == 1) {
+                        return ++num_read_watchers;
+                    } else if (delta == -1) {
+                        ASSERT_MSG(num_read_watchers > 0, "Not enough watchers");
+                        return --num_read_watchers;
+                    } else {
+                        return num_read_watchers;
+                    }
                 } else {
-                    return num_write_watchers;
+                    if constexpr (delta == 1) {
+                        return ++num_write_watchers;
+                    } else if (delta == -1) {
+                        ASSERT_MSG(num_write_watchers > 0, "Not enough watchers");
+                        return --num_write_watchers;
+                    } else {
+                        return num_write_watchers;
+                    }
                 }
             }
         }

@@ -65,6 +65,8 @@ bool copyGPUCmdBuffers();
 void setCopyGPUCmdBuffers(bool enable, bool is_game_specific = false);
 bool readbacks();
 void setReadbacks(bool enable, bool is_game_specific = false);
+bool fastReadbacks();
+void setFastReadbacks(bool enable, bool is_game_specific = false);
 bool readbackLinearImages();
 void setReadbackLinearImages(bool enable, bool is_game_specific = false);
 bool directMemoryAccess();
